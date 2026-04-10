@@ -1,0 +1,220 @@
+---
+name: npc-bug-fix
+description: Use when handling Teambition bug tasks, including bug triage, code fixes, review loops, local test-case validation, compile checks, user review confirmation, code submission, and Teambition status updates.
+---
+
+# npc-bug-fix
+
+这是一个完整的自动化 bug fix 和 code review 技能，适用于所有 workspace、项目和 session。
+
+## 技能概述
+
+当用户提供 Teambition bug 任务链接时，本技能指导完成修复、code review、编译验证、用户确认、代码提交和 Teambition 状态更新的完整流程。默认处理分配给 **梅天鹏 (meitianpeng@xdf.cn)** 的任务。**在编写修复方案之前**，须确认已完全理解需求；若有歧义或缺失信息，应先向用户提问并得到答复后再继续。
+
+## 完整流程
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Bug Fix + Code Review Flow                       │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  1. 📬 接收 Teambition 任务                                               │
+│     └─→ 用户提供任务链接 (如：https://www.teambition.com/task/xxx)          │
+│                                                                          │
+│  2. 🔍 检查任务详情                                                       │
+│     └─→ 执行者 == 梅天鹏 ?                                               │
+│         ├─→ YES: 继续修复流程                                             │
+│         └─→ NO: 询问用户：这个bug现在 xx(执行者)名下，继续修复吗？              │
+│             └─→ 用户回复确认继续 继续修复流程                                 │
+│                                                                          │
+│  3. 🔄 同步代码 (必须在修改前)                                             │
+│     ├─→ 确认工作区干净 (git status)                                       │
+│     │   └─→ 有未提交改动？ → 提示用户先处理                                 │
+│     └─→ git pull --rebase                                                │
+│                                                                          │
+│  4. 🐛 Bug Fix Skill                                                     │
+│     ├─→ 读取 bug 描述（文字 + 图片/视频）                                  │
+│     ├─→ 理解问题（UI 异常/功能错误/性能问题等）                            │
+│     ├─→ 需求确认（编写修复方案前必须完成）                                  │
+│     │   └─→ 不确定？ → 列出具体问题，请用户回答后再继续                      │
+│     ├─→ 定位相关代码                                                      │
+│     ├─→ 编写修复方案                                                      │
+│     └─→ 完成后 → Code Review Skill                                        │
+│                                                                          │
+│  5. 🔎 Code Review (使用已安装的 code-review:review-local-changes)         │
+│     ├─→ 调用 code-review:review-local-changes 技能审查本次改动             │
+│     ├─→ 额外要求：                                                        │
+│     │   ├─→ ❌ 不能引入新的 bug                                           │
+│     │   ├─→ ❌ 不能影响现有代码逻辑                                       │
+│     │   └─→ ✅ 根据 Teambition 描述编写 test case 本地验证                  │
+│     ├─→ 测试结果：                                                        │
+│     │   ├─→ FAIL: 返回 Bug Fix Skill 重新修复                              │
+│     │   └─→ PASS (0 fail, 0 warning, 0 error): → 编译验证                  │
+│     └─→ 循环直到：0 test case fail, 0 warnings, 0 compile error           │
+│                                                                          │
+│  6. ✅ 编译验证                                                           │
+│     ├─→ 检测项目类型并运行对应命令：                                       │
+│     │   ├─→ Flutter:  flutter pub get && flutter analyze                 │
+│     │   ├─→ Node/Vue/React: npm install && npm run lint (或 eslint)      │
+│     │   └─→ 其他项目：使用项目中配置的 lint / build 命令                  │
+│     ├─→ 确保：0 errors, 0 warnings                                       │
+│     └─→ 如有编译错误：返回 Bug Fix Skill 重新修复                          │
+│                                                                          │
+│  7. 🧪 App 内冒烟验证                                                     │
+│     ├─→ 在真实 App / 对应平台中复现并验证修复结果                          │
+│     ├─→ UI bug: 必须做 live UI smoke check 并核对截图/录屏/肉眼结果         │
+│     │   └─→ 适用于 Flutter、Vue、React、Electron、WebView 等真实运行环境    │
+│     ├─→ 非 UI bug: 至少验证关键操作链路无回归                              │
+│     └─→ FAIL: 返回 Bug Fix Skill 重新修复                                  │
+│                                                                          │
+│  8. 📝 通知用户 Review                                                    │
+│     └─→ 向用户展示修复摘要，等待确认                                        │
+│                                                                          │
+│  9. ✅ 用户确认                                                           │
+│     └─→ 用户回复确认                                                      │
+│                                                                          │
+│ 10. 💾 提交代码 (commit only)                                             │
+│     ├─→ git add <只添加本次修复的文件>                                     │
+│     └─→ git commit -m "fix: [bug 描述]"                                  │
+│                                                                          │
+│ 11. 🔔 通知用户确认 push                                                  │
+│     └─→ 展示 commit 信息（分支、hash、摘要），等待用户确认可以 push         │
+│                                                                          │
+│ 12. ⬆️  Push 代码                                                         │
+│     └─→ git push                                                         │
+│                                                                          │
+│ 13. ✅ 更新 Teambition 状态                                               │
+│     ├─→ 状态：开发中 → RESOLVED                                           │
+│     ├─→ 解决结果：完成                                                    │
+│     ├─→ 执行者：梅天鹏 → 郑满全 (QA)                                      │
+│     └─→ 添加进展备注（修复说明）                                          │
+│                                                                          │
+│ 14. 🧪 最终验证                                                           │
+│     ├─→ 确认代码已 push                                                  │
+│     ├─→ 确认 Teambition 状态已更新                                         │
+│     └─→ 确认编译正常 + smoke check 已完成                                  │
+│                                                                          │
+│ 15. 🎉 完成                                                              │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+## 配置要求
+
+### 1. Teambition 登录
+
+使用企业邮箱登录：
+- 邮箱：`meitianpeng@xdf.cn`
+- 登录方式：钉钉扫码 or 企业免密登录
+
+### 2. Code Review
+
+使用已安装的 `code-review:review-local-changes` 技能（位于 `~/.claude/skills/code-review-review-local-changes/`）。无需额外安装。
+
+#### 调用方式
+
+修复完成后，调用该技能审查本次未提交的改动。技能会自动：
+1. 通过 `git diff` 收集本次改动
+2. 分派多个专项 review agent（正确性、可维护性、测试覆盖等）
+3. 汇总反馈并给出改进建议
+
+#### 处理 review 反馈
+
+- **有 P0/P1 问题**：返回步骤 4 修复后重新 review
+- **仅 P2 及以下建议**：酌情采纳，继续下一步
+- **循环直到**：无 P0/P1 问题
+
+#### 额外 Bug-Fix 检查项（在标准 review 之上）
+
+- ❌ 不能引入新的 bug
+- ❌ 不能影响现有代码逻辑
+- ✅ 修复必须针对 Teambition 描述的问题
+- ✅ 根据 Teambition 描述编写 test case 本地验证（不提交）
+- ✅ 通过标准：0 test case fail, 0 warnings, 0 compile error
+- ✅ UI 类 bug 在通知用户 review 前必须完成 live UI smoke check
+- ✅ 非 UI 类 bug 至少验证关键操作链路一次
+
+## 技能文件结构
+
+```
+npc-bug-fix/
+├── SKILL.md                          # 本文件
+├── references/
+│   ├── teambition-api.md             # Teambition API 文档
+│   └── review-checklist.md           # Review 检查清单
+└── examples/
+    └── sample-flow.md                # 示例流程
+```
+
+## 使用方式
+
+用户提供 Teambition 任务链接后，按本 SKILL.md 流程执行：
+
+```
+用户: "处理这个 bug: https://www.teambition.com/task/xxx"
+→ 读取 Teambition 任务
+→ 按本技能流程执行修复
+```
+
+## 用户确认模板
+
+### 修复完成 — 请求 review
+
+向用户展示修复摘要，等待确认后再提交：
+
+```
+修复完成：[任务标题]
+链接：[Teambition 链接]
+
+修复内容：
+- [修复点 1]
+- [修复点 2]
+
+Review + 编译验证：✅ 0 fail, 0 warning, 0 error
+App 内冒烟验证：✅ 已完成
+
+请确认是否提交代码。
+```
+
+### 提交完成 — 请求 push
+
+```
+代码已 commit，分支：[branch-name]
+
+确认 push 到远端吗？
+```
+
+## 注意事项
+
+1. **修改代码前必须 pull**：在步骤 3 同步代码，确保基于最新远端开始修复
+2. **先澄清需求再写方案**：在「编写修复方案」之前，确认预期行为、复现条件、影响范围等已清楚；不确定时向用户提问，得到答复后再定位代码与实现
+3. **只提交任务相关文件**：`git add` 仅添加本次修复涉及的文件，禁止 `git add .` 或 `git add -A`
+4. **Test case 不提交**：仅本地验证使用
+5. **循环修复**：如果 review 发现问题，自动返回 bug fix 流程
+6. **UI bug 必须做 live smoke check**：在真实 App / 对应平台里验证修复结果；适用于 Flutter、Vue、React、Electron、WebView 等环境；无法执行时必须明确记录阻塞原因
+7. **用户确认**：关键节点（提交、push）必须先向用户展示摘要并等待确认
+8. **状态同步**：确保 Teambition 状态与代码提交一致
+9. **⚠️ 禁止直接 Push**：修复完成后不要直接 push，先通知用户 review
+10. **✅ 编译验证**：修改代码后必须确保编译正常，无编译错误和警告
+
+## 故障处理
+
+| 问题                | 解决方案                 |
+| ------------------- | ------------------------ |
+| Teambition 登录失败 | 使用钉钉扫码重新登录     |
+| Code Review 卡住    | 检查 review 技能配置     |
+| Git push 失败       | 先执行 git pull --rebase |
+| Test case 失败      | 返回 bug fix 重新修复    |
+
+## 版本历史
+
+- **v1.5** (2026-04-10): 在用户 review 前新增 App 内冒烟验证步骤；UI bug 强制执行 live UI smoke check，并将结果纳入模板与最终验证
+- **v1.4** (2026-04-10): 修复两处一致性问题：(1) 主流程步骤 9 拆分为 commit + 独立 push 确认步骤，消除单次确认即可 push 的漏洞；(2) 编译验证改为按项目类型检测，不再硬编码 Flutter 命令
+- **v1.3** (2026-04-10): skill `name` 改为 `npc-bug-fix`
+- **v1.2** (2026-04-10): 编写修复方案前增加需求确认；不确定时向用户提问
+- **v1.1** (2026-04-10): 修复流程缺陷：同步代码移至修改前、仅暂存任务文件、移除不存在的脚本引用、统一执行者字段、移除后台监听声明
+- **v1.0** (2026-03-16): 初始版本，基于实际 Teambition 任务 NPAD-17159 流程编写
+
+## 许可证
+
+Apache 2.0
