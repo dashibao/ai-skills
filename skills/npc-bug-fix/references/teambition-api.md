@@ -14,6 +14,45 @@
 GET https://www.teambition.com/task/{taskId}
 ```
 
+### 获取任务动态/活动
+```
+GET https://www.teambition.com/api/tasks/{taskId}/activities
+```
+
+**响应示例：**
+```json
+[
+  {
+    "_id": "...",
+    "action": "activity.comment",
+    "content": {
+      "comment": "端上参数不对，上一个bug有链接",
+      "creator": "李晓雨51"
+    },
+    "created": "2026-04-13T03:03:47.584Z"
+  },
+  {
+    "_id": "...",
+    "action": "activity.task.update.executor",
+    "content": {
+      "executor": "侯锐6",
+      "oldExecutor": "李晓雨51"
+    }
+  }
+]
+```
+
+**常见 action 类型：**
+- `activity.comment` - 评论
+- `activity.task.update.executor` - 执行者变更
+- `activity.task.customfield.update.v2` - 自定义字段更新
+- `activity.task.create.from.ancestor` - 从父任务创建
+
+**用途：** 动态中可能包含关键线索，如：
+- 评论中的错误分析（"参数不对"、"参考上一个bug"）
+- 相关任务链接
+- 需求变更记录
+
 ### 更新任务状态
 ```
 POST https://www.teambition.com/api/tasks/{taskId}/status
