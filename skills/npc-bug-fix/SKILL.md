@@ -41,16 +41,22 @@ This is a complete automated bug fix and code review skill set, applicable to al
 │     │   └─→ 有未提交改动？ → 提示用户先处理                                 │
 │     └─→ git pull --rebase                                                │
 │                                                                          │
-│  4. 🐛 Bug Fix Skill                                                     │
+│  4. 🔍 理解问题 & 根因分析                                                 │
 │     ├─→ 基于步骤 2 已获取的需求和动态信息理解问题                          │
-│     ├─→ 理解问题（UI 异常/功能错误/性能问题等）                            │
-│     ├─→ 需求确认（编写修复方案前必须完成）                                  │
-│     │   └─→ 不确定？ → 列出具体问题，请用户回答后再继续                      │
-│     ├─→ 定位相关代码                                                      │
-│     ├─→ 编写修复方案                                                      │
+│     ├─→ 判断问题类型（UI 异常 / 功能错误 / 性能问题 / 数据上报等）          │
+│     ├─→ 定位相关代码（文件、函数、调用链路）                                │
+│     ├─→ 输出根因分析，向用户说明你对 bug 的理解                             │
+│     ├─→ 用户确认？                                                        │
+│     │   ├─→ YES: 根因理解正确 → 进入步骤 5                                  │
+│     │   └─→ NO: 用户提出异议 → 重新分析，直到用户确认为止                    │
+│     │   └─→ 信息不足？ → 列出具体问题，请用户回答后再继续                    │
+│     └─→ ⚠️ 未经用户确认根因分析，不得开始编码修复                            │
+│                                                                          │
+│  5. 🐛 Bug Fix Skill                                                     │
+│     ├─→ 基于已确认的根因分析编写修复方案                                    │
 │     └─→ 完成后 → Code Review Skill                                        │
 │                                                                          │
-│  5. 🔎 Code Review (使用已安装的 code-review:review-local-changes)         │
+│  6. 🔎 Code Review (使用已安装的 code-review:review-local-changes)         │
 │     ├─→ 调用 code-review:review-local-changes 技能审查本次改动             │
 │     ├─→ 额外要求：                                                        │
 │     │   ├─→ ❌ 不能引入新的 bug                                           │
@@ -61,7 +67,7 @@ This is a complete automated bug fix and code review skill set, applicable to al
 │     │   └─→ PASS (0 fail, 0 warning, 0 error): → 编译验证                  │
 │     └─→ 循环直到：0 test case fail, 0 warnings, 0 compile error           │
 │                                                                          │
-│  6. ✅ 编译验证                                                           │
+│  7. ✅ 编译验证                                                           │
 │     ├─→ 检测项目类型并运行对应命令：                                       │
 │     │   ├─→ Flutter:  flutter pub get && flutter analyze                 │
 │     │   ├─→ Node/Vue/React: npm install && npm run lint (或 eslint)      │
@@ -69,41 +75,41 @@ This is a complete automated bug fix and code review skill set, applicable to al
 │     ├─→ 确保：0 errors, 0 warnings                                       │
 │     └─→ 如有编译错误：返回 Bug Fix Skill 重新修复                          │
 │                                                                          │
-│  7. 🧪 App 内冒烟验证                                                     │
+│  8. 🧪 App 内冒烟验证                                                     │
 │     ├─→ 在真实 App / 对应平台中复现并验证修复结果                          │
 │     ├─→ UI bug: 必须做 live UI smoke check 并核对截图/录屏/肉眼结果         │
 │     │   └─→ 适用于 Flutter、Vue、React、Electron、WebView 等真实运行环境    │
 │     ├─→ 非 UI bug: 至少验证关键操作链路无回归                              │
 │     └─→ FAIL: 返回 Bug Fix Skill 重新修复                                  │
 │                                                                          │
-│  8. 📝 通知用户 Review                                                    │
+│  9. 📝 通知用户 Review                                                    │
 │     └─→ 向用户展示修复摘要，等待确认                                         │
 │                                                                         │
-│  9. ✅ 用户确认                                                           │
+│ 10. ✅ 用户确认                                                           │
 │     └─→ 用户回复确认                                                       │
 │                                                                         │
-│ 10. 💾 提交代码 (commit only)                                             │
+│ 11. 💾 提交代码 (commit only)                                             │
 │     ├─→ git add <只添加本次修复的文件>                                      │
 │     └─→ git commit -m "fix: [bug 描述]"                                  │
 │                                                                         │
-│ 11. 🔔 通知用户确认 push                                                  │
+│ 12. 🔔 通知用户确认 push                                                  │
 │     └─→ 展示 commit 信息（分支、hash、摘要），等待用户确认可以 push             │
 │                                                                         │
-│ 12. ⬆️  Push 代码                                                        │
+│ 13. ⬆️  Push 代码                                                        │
 │     └─→ git push                                                        │
 │                                                                         │
-│ 13. ✅ 更新 Teambition 状态                                              │
+│ 14. ✅ 更新 Teambition 状态                                              │
 │     ├─→ 状态：待开发 → 开发中                                              │
 │     ├─→ 状态：开发中 → RESOLVED                                           │
 │     ├─→ 解决结果：完成                                                    │
 │     └─→ 添加进展备注（10字左右的修复说明）                                     │
 │                                                                          │
-│ 14. 🧪 最终验证                                                           │
+│ 15. 🧪 最终验证                                                           │
 │     ├─→ 确认代码已 push                                                  │
 │     ├─→ 确认 Teambition 状态已更新                                         │
 │     └─→ 确认编译正常 + smoke check 已完成                                  │
 │                                                                          │
-│ 15. 🎉 完成                                                              │
+│ 16. 🎉 完成                                                              │
 │                                                                          │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
@@ -129,7 +135,7 @@ This is a complete automated bug fix and code review skill set, applicable to al
 
 #### 处理 review 反馈
 
-- **有 P0/P1 问题**：返回步骤 4 修复后重新 review
+- **有 P0/P1 问题**：返回步骤 5 修复后重新 review
 - **仅 P2 及以下建议**：酌情采纳，继续下一步
 - **循环直到**：无 P0/P1 问题
 
@@ -200,7 +206,7 @@ App 内冒烟验证：✅ 已完成
    - 任务动态中的评论往往包含关键线索（如"端上参数不对"、"参考上一个bug"等）
    - **跳过这两步是严重失误，会导致修复方向错误**
 2. **修改代码前必须 pull**：在步骤 3 同步代码，确保基于最新远端开始修复
-3. **先澄清需求再写方案**：在「编写修复方案」之前，确认预期行为、复现条件、影响范围等已清楚；不确定时向用户提问，得到答复后再定位代码与实现
+3. **先澄清需求再写方案**：在步骤 4「理解问题 & 根因分析」中，确认预期行为、复现条件、影响范围等已清楚；**输出根因分析并向用户说明，用户确认理解正确后才进入步骤 5 编码修复**；不确定时向用户提问，得到答复后再继续
 4. **只提交任务相关文件**：`git add` 仅添加本次修复涉及的文件，禁止 `git add .` 或 `git add -A`
 5. **Test case 不提交**：仅本地验证使用
 6. **循环修复**：如果 review 发现问题，自动返回 bug fix 流程
@@ -222,6 +228,7 @@ App 内冒烟验证：✅ 已完成
 
 ## 版本历史
 
+- **v1.8** (2026-04-17): 将步骤 4 拆分为「理解问题 & 根因分析」和「Bug Fix」两个独立步骤；编码修复前必须输出根因分析并经用户确认
 - **v1.7** (2026-04-15): 在步骤 2 强制要求阅读备注附件和所有动态；备注区的图片是需求/设计关键来源，不可跳过；注意事项增加"以实际接口字段名为准"
 - **v1.6** (2026-04-13): 在 Bug Fix Skill 流程中增加「读取任务动态/活动」步骤；动态中的评论和变更记录可能包含关键修复线索（如"参数不对"、"参考上一个bug"等）
 - **v1.5** (2026-04-10): 在用户 review 前新增 App 内冒烟验证步骤；UI bug 强制执行 live UI smoke check，并将结果纳入模板与最终验证
