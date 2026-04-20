@@ -1,65 +1,72 @@
-# npc-bug-fix 示例流程live
+# npc-bug-fix · 示例流程
 
-## 实际案例：NPAD-17159
+> 本文件展示两个真实案例的完整执行过程，供 Claude Code 理解每一步的预期输入与输出。
+
+---
+
+## 案例 1 · NPAD-17159（Vue/JS · 数据上报缺字段）
 
 ### 1. 接收任务
 
-用户提供 Teambition 任务链接：
-
+**用户输入：**
 ```
 https://www.teambition.com/task/69ae8deadd95777901fe003f
-任务：【导入学员】导入学员数据统计--导入学员到小组，上报内容不全
+```
+
+**任务信息：**
+```
+标题：【导入学员】导入学员数据统计--导入学员到小组，上报内容不全
 执行者：梅天鹏
 ```
 
+---
+
 ### 2. 检查任务
 
-```javascript
-// 自动打开 Teambition 任务
-const task = await teambiton.getTask('69ae8deadd95777901fe003f');
+获取任务，确认执行者为梅天鹏 → 继续。
 
-// 检查执行者（assignee 是当前负责人，即 Teambition 中的"执行者"）
-if (task.assignee === '梅天鹏') {
-  console.log('开始处理 bug...');
-  startBugFix(task);
-} else {
-  // 执行者不是梅天鹏，询问用户是否继续
-  console.log(`任务执行者是 ${task.assignee}，询问用户是否继续修复`);
-}
+```javascript
+const task = await teambition.getTask('69ae8deadd95777901fe003f');
+// task.assignee === '梅天鹏' → 开始处理
 ```
+
+---
+
+### 2.5 同步代码
+
+```bash
+git pull --rebase   # 仅此处执行，后续步骤不再 pull
+```
+
+---
 
 ### 3. Bug 分析
 
 **任务描述：**
-
 ```
-【操作描述】：
-学习小组点击导入用户操作
-- 导入时间
-- 导入方式
-  - 新建导入
-  - 已有组导入
-- 导入组名
-- 导入组 CODE
-- 导入人数
+【操作描述】学习小组点击导入用户操作，上报字段：
+  - 导入时间 / 导入方式（新建导入 / 已有组导入）
+  - 导入组名 / 导入组 CODE / 导入人数
 
-【预期结果】：上报完整数据
-【实际结果】：缺少 timeStamp 字段
+【预期结果】上报完整数据
+【实际结果】缺少 timeStamp 字段
 ```
 
-**问题定位：**
+**问题定位（3 个文件）：**
+```
+src/pages/classGroup/CreateClassGroup.vue
+src/pages/classGroup/EditClassGroup.vue
+src/pages/classGroup/components/ChooseStudent/ImportStudentModal.vue
+```
 
-- 文件 1: `src/pages/classGroup/CreateClassGroup.vue`
-- 文件 2: `src/pages/classGroup/EditClassGroup.vue`
-- 文件 3: `src/pages/classGroup/components/ChooseStudent/ImportStudentModal.vue`
+---
 
 ### 4. Bug 修复
 
 ```javascript
-// 修复前
+// ❌ 修复前
 sendAudioTalkEvent(EventAction.importStudentGroup, {
-  p_r: false,
-  evt_c: 200,
+  p_r: false, evt_c: 200,
   evt_p: {
     importMethod: '新建导入',
     groupName: lastSaved?.groupName ?? '',
@@ -68,123 +75,87 @@ sendAudioTalkEvent(EventAction.importStudentGroup, {
   },
 });
 
-// 修复后
+// ✅ 修复后（三个文件均添加 timeStamp）
 sendAudioTalkEvent(EventAction.importStudentGroup, {
-  p_r: false,
-  evt_c: 200,
+  p_r: false, evt_c: 200,
   evt_p: {
     importMethod: '新建导入',
     groupName: lastSaved?.groupName ?? '',
     groupCode: lastSaved?.groupCode ?? '',
     importCount,
-    timeStamp: new Date().getTime(), // ✅ 添加 timeStamp
+    timeStamp: new Date().getTime(), // ✅ 补充缺失字段
   },
 });
 ```
 
+---
+
 ### 5. Code Review
 
-#### 调用 code-review:review-local-changes 技能
+调用 `code-review:review-local-changes` 技能审查改动（P0/P1 需修复后重新 review）。
 
-修复完成后调用已安装的 review 技能审查本次改动，处理返回的反馈（P0/P1 需修复后重新 review）。
-
-#### 编写 Test Case
-
+**Test Case（本地验证，不提交）：**
 ```javascript
-// 本地验证，不提交
 describe('Bug Fix Verification - NPAD-17159', () => {
   it('CreateClassGroup.vue should include timeStamp', () => {
     const content = fs.readFileSync('CreateClassGroup.vue', 'utf-8');
     expect(content).toContain('timeStamp: new Date().getTime()');
   });
-
   it('EditClassGroup.vue should include timeStamp', () => {
-    const content = fs.readFileSync('EditClassGroup.vue', 'utf-8');
-    expect(content).toContain('timeStamp: new Date().getTime()');
+    expect(fs.readFileSync('EditClassGroup.vue', 'utf-8'))
+      .toContain('timeStamp: new Date().getTime()');
   });
-
   it('ImportStudentModal.vue should include timeStamp', () => {
-    const content = fs.readFileSync('ImportStudentModal.vue', 'utf-8');
-    expect(content).toContain('timeStamp: new Date().getTime()');
+    expect(fs.readFileSync('ImportStudentModal.vue', 'utf-8'))
+      .toContain('timeStamp: new Date().getTime()');
   });
 });
 ```
 
-#### Review 结果
-
+**Review 结果：**
 ```
 ✅ Code Review 通过
-
-检查结果：
-- 0 test case fail
-- 0 warnings
-- 0 compile error
-- 无新 bug 引入
-- 无现有逻辑影响
-
-准备编译验证...
+- 0 test case fail / 0 warnings / 0 compile error
+- 无新 bug 引入 / 无现有逻辑影响
 ```
 
-### 5.5 编译验证 (新增)
+---
 
-> **本案例为 Vue/JS 项目**，使用对应的 lint/build 命令；Flutter 项目改用 `flutter pub get && flutter analyze`。
+### 5.5 编译验证
 
-#### Vue/JS 项目
+**本案例：Vue/JS 项目**
 
 ```bash
-# 安装依赖（如尚未安装）
 npm install
-
-# 静态分析 / lint
 npm run lint
-
-# 确保输出:
-# No errors / No warnings
+# 期望输出：No errors / No warnings
 ```
 
-#### 编译检查清单
-
-- 0 compile errors
-- 0 warnings
-- lint 通过
-- 无新的 lint 警告
-
-#### 如果编译失败
-
+**如编译失败：**
 ```
 ❌ 编译错误
-
-错误类型：[错误描述]
-错误位置：[文件路径：行号]
-
-返回 Bug Fix Skill 重新修复...
+错误类型：[描述]   错误位置：[文件:行号]
+→ 返回 Step 4 重新修复
 ```
+
+---
 
 ### 6. App 内冒烟验证
 
-> **本案例为非 UI 数据上报 bug**，至少验证关键链路一次；如果是 UI bug，则必须在真实 App / 对应平台中做 live UI smoke check。该要求同样适用于 Flutter、Vue、React、Electron、WebView 等真实运行环境。
-
-#### 本地验证
-
-```bash
-# 按 Teambition 描述实际触发一次导入学员链路
-# 核对事件上报参数中已包含 timeStamp
-```
-
-#### 冒烟验证结果
+**本案例：非 UI 数据上报 bug** → 至少触发关键链路一次，核对上报参数。
 
 ```
-✅ App 内冒烟验证通过
-
-检查结果：
+✅ 冒烟验证通过
 - 导入学员操作可正常执行
 - evt_p 中包含 timeStamp
 - 未发现新增异常
 ```
 
-### 7. 通知用户 Review
+> UI bug 必须在真实 App / 平台（Flutter / Vue / React / Electron / WebView）做 live smoke check。
 
-向用户展示修复摘要：
+---
+
+### 7. 通知用户 Review【第一次确认】
 
 ```
 修复完成：【导入学员】导入学员数据统计--导入学员到小组，上报内容不全
@@ -201,418 +172,320 @@ App 内冒烟验证：✅ 已完成
 请确认是否提交代码。
 ```
 
-### 8. 用户确认
+**用户回复：** `确认`
 
-**用户回复：**
+---
 
-```
-确认
-```
-
-### 9. 提交代码 (commit only)
+### 8. 提交代码
 
 ```bash
-# 注意: git pull 已在步骤 2.5（修复前同步）执行，此处无需再 pull
-
-# 1. 仅添加本次修复涉及的文件（禁止 git add . 或 git add -A）
+# 仅添加本次修复文件（禁止 git add . 或 git add -A）
 git add src/pages/classGroup/CreateClassGroup.vue
 git add src/pages/classGroup/EditClassGroup.vue
 git add src/pages/classGroup/components/ChooseStudent/ImportStudentModal.vue
 
-# 2. 提交
 git commit -m "fix: 补充导入学员上报 timeStamp 参数
 
 - CreateClassGroup.vue: 添加 timeStamp 到 importStudentGroup 事件
-- EditClassGroup.vue: 添加 timeStamp 到 importStudentGroup 事件  
+- EditClassGroup.vue: 添加 timeStamp 到 importStudentGroup 事件
 - ImportStudentModal.vue: 添加 timeStamp 到 importStudentSchedule 事件
 
 基于 commit de16cfc7beea209f81aa1f9c6df471125a1b135c 的数据统计功能补充"
 
-# ⚠️ 不要直接 push，先通知用户确认
+# ⚠️ 不要直接 push
 ```
 
-### 10. 通知用户确认 push
+---
+
+### 9. 通知用户确认 Push【第二次确认】
 
 ```
 代码已 commit (分支：feature-task-voice，commit: 1c8c6891e)
-
 确认 push 到远端吗？
 ```
 
-**用户回复：**
-
-```
-确认
-```
-
-### 11. Push 代码
+**用户回复：** `确认`
 
 ```bash
 git push origin feature-task-voice
 ```
 
-### 12. 更新 Teambition 状态
+---
 
-**状态变更：**
+### 10. 更新 Teambition
 
-```
-开发中 → RESOLVED
-```
+**状态流转：** `开发中 → RESOLVED`
 
-**解决结果：**
+**必填信息：**
+- 解决结果：`完成`
+- 影响范围：`[受影响端/页面]`
 
-```
-完成
-```
-
-**添加进展备注：**
-
+**进展备注：**
 ```
 已根据 commit de16cfc7beea209f81aa1f9c6df471125a1b135c 为三个文件添加 timeStamp 参数，
 代码已提交推送到 feature-task-voice 分支。
 ```
 
-### 13. 完成
-
+**完成输出：**
 ```
 代码已提交并 push 到 feature-task-voice 分支 (commit: 1c8c6891e)
-Teambition 状态已更新为 RESOLVED
+Teambition 状态已更新为 RESOLVED ✅
 ```
-
-## 流程图
-
-```
-用户提供任务链接
-   ↓
-检查任务 (执行者=梅天鹏？)
-   ↓
-是 → git pull --rebase (同步代码)
-   ↓
-读取 Bug 描述
-   ↓
-理解需求（编写方案前须确认清楚）
-   ↓
-不确定？── 是 ──→ 向用户提问 → 得到答复 ──┐
-   ↓ 否                                  │
-定位问题代码 ←──────────────────────────┘
-   ↓
-编写修复方案
-   ↓
-Code Review
-   ↓
-通过？─── 否 ──→ 重新修复
-   ↓ 是
-App 内冒烟验证
-   ↓
-通知用户 Review
-   ↓
-用户确认（第一次：确认提交）
-   ↓
-git add <修复文件>
-   ↓
-git commit
-   ↓
-通知用户确认 push（第二次）
-   ↓
-用户确认（第二次：确认 push）
-   ↓
-git push
-   ↓
-更新 Teambition 状态
-   ↓
-添加进展备注
-   ↓
-完成 🎉
-```
-
-## 关键要点
-
-1. **手动触发**：用户提供 Teambition 任务链接来触发本技能
-2. **需求先行**：编写修复方案前确认已理解需求；有歧义时先提问，再写方案与改代码
-3. **身份验证**：只处理分配给梅天鹏的任务
-4. **严格 Review**：0 fail, 0 warning, 0 error
-5. **先验真实运行环境**：UI bug 在通知用户 review 前必须完成 live smoke check；Flutter、Vue、React、Electron、WebView 都适用
-6. **Test Case**：本地验证，不提交
-7. **循环修复**：直到完全通过
-8. **用户确认**：提交前必须用户 review
-9. **修改前 pull**：修复代码前先 pull 同步远端，提交时无需再 pull
-10. **状态同步**：Teambition 状态与代码一致
-11. **⚠️ 重要**：代码修复完成后**不要直接 push**，先通知用户 review
-12. **📋 Teambition 状态更新**: 必须填写必填信息（解决结果 + 影响范围）
 
 ---
 
-## Teambition 状态更新完整流程
+## 案例 2 · NPAD-17443（Flutter · Windows 窗口无法关闭）
 
-### 状态流转
+### 1. 接收任务
 
-```
-待开发 → 开发中 → RESOLVED
-```
-
-### 操作步骤
-
-#### 1. 变更状态为 RESOLVED
-
-```
-点击状态按钮（如"待开发"）
-  ↓
-选择"开发中"（如果当前是待开发）
-  ↓
-再次点击状态（现在是"开发中"）
-  ↓
-选择"RESOLVED"
-```
-
-#### 2. 填写必填信息弹窗
-
-```
-┌─────────────────────────────────────┐
-│  填写任务流转的必填信息          ×  │
-├─────────────────────────────────────┤
-│  ⚠️ 当任务从其他状态变更为         │
-│     「RESOLVED」时，以下必填字段    │
-│     不可为空。若无填写权限，请联   │
-│     系项目管理员处理                │
-├─────────────────────────────────────┤
-│  解决结果：[待添加 ▼]               │
-│  影响范围：[待添加 ▼]               │
-├─────────────────────────────────────┤
-│              [取消]  [确定]         │
-└─────────────────────────────────────┘
-```
-
-**必填字段**:
-
-- **解决结果**: 选择"完成"
-- **影响范围**: 填写影响范围
-  - 示例：`PC 端榜单编辑页面`
-  - 示例：`Pad 端活动卡片`
-  - 示例：`小程序首页`
-
-#### 3. 添加进展备注
-
-```
-点击"填写进展"
-  ↓
-输入修复说明（使用下方模板）
-  ↓
-点击"发布"
-```
-
-### 进展备注模板
-
-```markdown
-已修复 [问题描述]。
-
-问题原因:
-[简要说明]
-
-修复方案:
-[简要说明]
-
-修改文件:
-- [文件路径]
-
-代码已提交并推送到 develop-3.5.0 分支。
-```
-
-### 完整示例
-
-**备注内容**:
-
-```markdown
-已修复 pad 端活动卡片更多操作菜单删除按钮被遮挡问题。
-
-问题原因:
-- 新增导入按钮后，更多操作菜单变长
-- 弹窗位置计算未考虑屏幕底部边界
-- 导致弹窗超出屏幕，部分内容无法点击
-
-修复方案:
-- 修改 showPopDialog 方法，增加屏幕边界检测
-- 当弹窗底部超出屏幕时，自动显示在触发按钮上方
-- 确保菜单始终在屏幕内可见
-
-修改文件:
-- lib/business/classes_group/widgets/base/classes_group_utils.dart
-
-代码已提交并推送到 develop-3.5.0 分支。
-```
-
-**必填信息**:
-
-- 解决结果：完成
-- 影响范围：Pad 端活动卡片
-
-**状态变更**:
-
-- 待开发 → 开发中 → RESOLVED
+| 字段 | 值 |
+|------|----|
+| 任务 ID | NPAD-17443 |
+| 标题 | 【历史问题】榜单编辑页面在电脑下方任务栏点击关闭，无法关闭 |
+| 类型 | Flutter 桌面应用 |
+| 执行者 | 梅天鹏 |
 
 ---
 
-## 实际案例 2: NPAD-17443 (Flutter 窗口关闭问题)
+### 2. 检查任务 & 同步代码
 
-### 任务信息
+执行者为梅天鹏 → 继续。
 
+```bash
+git pull --rebase
+```
 
-| 字段        | 值                             |
-| --------- | ----------------------------- |
-| **任务 ID** | NPAD-17443                    |
-| **标题**    | 【历史问题】榜单编辑页面在电脑下方任务栏点击关闭，无法关闭 |
-| **类型**    | Flutter 桌面应用                  |
-| **执行者**   | 梅天鹏                           |
+---
 
+### 3. Bug 分析
 
-### Bug 分析
+**问题描述：** 榜单编辑页面在 Windows 任务栏点击 X，无法关闭。
 
-**问题描述**:
+**对比分析：**
+- ✅ 其他页面可正常关闭（均已重写 `onWindowClose()`）
+- ❌ `NPCRankingListPage` 未重写 `onWindowClose()`
 
-> 榜单编辑页面在电脑下方任务栏点击关闭，无法关闭
+**根本原因：** Windows 任务栏窗口预览的 X 按钮触发原生关闭消息，该页面未处理此事件。
 
-**对比分析**:
+---
 
-- ✅ 其他页面窗口可以正常关闭
-- ❌ 只有 NPCRankingListPage 页面不行
+### 4. Bug 修复
 
-**根本原因**:
-
-- NPCRankingListPage 没有重写 `onWindowClose()` 方法
-- Windows 任务栏窗口预览的 X 按钮触发原生关闭消息
-- 其他能正常关闭的页面都有 `onWindowClose()` 方法
-
-### 修复方案
-
-**文件**: `lib/business/ranking_list/views/page/npc_ranking_list_page.dart`
+**文件：** `lib/business/ranking_list/views/page/npc_ranking_list_page.dart`
 
 ```dart
-/// 修复 NPAD-17443: 处理窗口原生关闭事件
+/// 修复 NPAD-17443：处理窗口原生关闭事件
 /// Windows 任务栏窗口预览的 X 按钮会触发此方法
 @override
 void onWindowClose() {
-  // 调用窗口管理器的 close 方法，正确处理 setPreventClose
   NPCWindowManager.instance.currentWindow().close();
   super.onWindowClose();
 }
 ```
 
-### Code Review
+---
 
-**检查清单**:
+### 5. Code Review
 
-- ❌ 不引入新的 bug
-- ❌ 不影响现有代码逻辑
+**检查清单：**
 - ✅ 修复针对 Teambition 描述的问题
-- ✅ 与其他正常页面保持一致的实现
+- ✅ 与其他正常页面实现保持一致
+- ✅ 不引入新 bug / 不影响现有逻辑
 
-**Review 结果**:
+**编译验证：Flutter 项目**
 
+```bash
+flutter pub get && flutter analyze
+# 期望：No issues found
+```
+
+**Review 结果：**
 ```
 ✅ 通过
-
-修改内容:
 - 添加 onWindowClose() 方法重写
-- 调用 NPCWindowManager.close() 处理原生关闭消息
-
-影响范围:
-- 仅影响榜单编辑页面
-- 支持 Windows 任务栏预览关闭
-- 不影响其他关闭方式
+- 调用 NPCWindowManager.close() 正确处理 setPreventClose
+- 仅影响榜单编辑页面，不影响其他关闭方式
 ```
 
-### 通知用户 Review
+---
 
-向用户展示修复摘要：
+### 6. App 内冒烟验证
+
+**本案例：UI 交互 bug** → 必须在真实 Windows 环境中点击任务栏 X 按钮验证。
+
+```
+✅ 冒烟验证通过
+- 任务栏预览点击 X 可正常关闭榜单编辑页面
+- 其他页面关闭功能不受影响
+```
+
+---
+
+### 7. 通知用户 Review【第一次确认】
 
 ```
 修复完成：NPAD-17443 - 榜单编辑页面无法通过 Windows 任务栏预览关闭
 
-问题原因:
-- NPCRankingListPage 没有重写 onWindowClose() 方法
-- Windows 任务栏窗口预览的 X 按钮触发原生关闭消息
-
-修复方案:
-- 重写 onWindowClose() 方法
-- 调用 NPCWindowManager.close() 正确处理 setPreventClose
-
-修改文件:
-- lib/business/ranking_list/views/page/npc_ranking_list_page.dart (+9 行)
+问题原因：NPCRankingListPage 未重写 onWindowClose()，无法处理原生关闭消息
+修复方案：重写 onWindowClose()，调用 NPCWindowManager.close()
+修改文件：lib/business/ranking_list/views/page/npc_ranking_list_page.dart (+9 行)
 
 Review + 编译验证通过，请确认是否提交代码。
 ```
 
-### 用户确认后提交
-
-```bash
-# 1. 等待用户回复"确认"
-# 注意: git pull 已在修复前（步骤 3 同步代码）执行，此处无需再 pull
-
-# 2. 仅添加本次修复涉及的文件（禁止 git add . 或 git add -A）
-git add lib/business/ranking_list/views/page/npc_ranking_list_page.dart
-
-# 3. 提交代码
-git commit -m "fix: 修复榜单编辑页面无法通过 Windows 任务栏预览关闭的问题 (NPAD-17443)
-
-问题原因:
-- 榜单页面没有重写 onWindowClose() 方法
-- Windows 任务栏窗口预览的 X 按钮触发原生关闭消息
-
-修复方案:
-- 重写 onWindowClose() 方法
-- 调用 NPCWindowManager.close() 正确处理 setPreventClose"
-
-# 7. ⚠️ 不要直接 push，等待用户确认可以 push
-
-# 8. 用户确认可以 push 后
-git push origin develop-3.5.0
-```
-
-### 更新 Teambition
-
-**状态变更**: 待开发 → RESOLVED  
-**备注**: 已修复，代码已提交，等待测试验证
+**用户回复：** `确认`
 
 ---
 
-## 注意事项
+### 8. 提交代码
 
-### 🚫 禁止直接 Push
+```bash
+git add lib/business/ranking_list/views/page/npc_ranking_list_page.dart
 
-修复完成后**不要直接 push 代码**，流程应该是：
+git commit -m "fix: 修复榜单编辑页面无法通过 Windows 任务栏预览关闭的问题 (NPAD-17443)
+
+问题原因：榜单页面未重写 onWindowClose()，无法处理 Windows 原生关闭消息
+修复方案：重写 onWindowClose()，调用 NPCWindowManager.close() 正确处理 setPreventClose"
+
+# ⚠️ 不要直接 push
+```
+
+---
+
+### 9. 通知用户确认 Push【第二次确认】
 
 ```
-修复完成 → Code Review → 通知用户 → 用户确认 → 提交代码 → 通知用户 → 用户确认 → Push 代码
+代码已 commit (分支：develop-3.5.0)
+确认 push 到远端吗？
 ```
 
-### ✅ 正确流程
+**用户回复：** `确认`
 
-1. 修复 Bug
-2. Code Review（确保 0 fail, 0 warning, 0 error）
-3. **通知用户 review**（等待确认）
-4. 用户确认后提交代码（commit）
-5. **再次通知用户**（告知已 commit，询问是否可以 push）
-6. 用户确认可以 push 后执行 push
-7. 更新 Teambition 状态
+```bash
+git push origin develop-3.5.0
+```
 
-### 📋 用户确认模板
+---
 
-**第一次确认（修复完成）**:
+### 10. 更新 Teambition
 
+**状态流转：** `待开发 → RESOLVED`
+
+**必填信息：**
+- 解决结果：`完成`
+- 影响范围：`Windows 端榜单编辑页面`
+
+**进展备注：**
+```
+已修复榜单编辑页面无法通过 Windows 任务栏预览关闭的问题。
+
+问题原因：NPCRankingListPage 未重写 onWindowClose() 方法
+修复方案：重写 onWindowClose()，调用 NPCWindowManager.close() 处理原生关闭消息
+修改文件：lib/business/ranking_list/views/page/npc_ranking_list_page.dart
+
+代码已提交并推送到 develop-3.5.0 分支。
+```
+
+---
+
+## 流程图
+
+```
+用户提供任务链接
+       │
+       ▼
+  检查执行者
+  ┌────┴─────┐
+非梅天鹏   梅天鹏
+  │           │
+询问用户    git pull --rebase
+  │           │
+  └────┬──────┘
+       ▼
+  读取 Bug 描述
+       │
+  有歧义？──是──► 向用户提问 ──► 得到答复
+       │ 否                          │
+       ◄─────────────────────────────┘
+       │
+       ▼
+  定位问题代码 → 编写修复方案
+       │
+       ▼
+  Code Review + 编译验证
+       │
+  通过？──否──► 重新修复 ──┐
+       │ 是               │
+       ◄───────────────────┘
+       │
+       ▼
+  App 内冒烟验证
+       │
+       ▼
+  【第一次确认】通知用户 Review
+       │
+  用户确认
+       │
+       ▼
+  git add <修复文件> && git commit
+       │
+       ▼
+  【第二次确认】通知用户确认 Push
+       │
+  用户确认
+       │
+       ▼
+  git push
+       │
+       ▼
+  更新 Teambition（状态 + 进展备注）
+       │
+       ▼
+     完成 🎉
+```
+
+---
+
+## 两次确认模板
+
+**第一次（修复完成，请求 commit 授权）：**
 ```
 修复完成：[任务标题]
-链接：[Teambition 链接]
+链接：[Teambition URL]
+
+问题原因：[简要说明]
+修复方案：[简要说明]
+修改文件：[文件路径列表]
+
+Review + 编译验证：✅ 0 fail, 0 warning, 0 error
+App 内冒烟验证：✅ 已完成
+
+请确认是否提交代码。
+```
+
+**第二次（已 commit，请求 push 授权）：**
+```
+代码已 commit (分支：[branch]，commit: [hash])
+确认 push 到远端吗？
+```
+
+---
+
+## Teambition 状态更新说明
+
+**正常路径：** `待开发 → 开发中 → RESOLVED`
+
+**变更为 RESOLVED 时，弹窗必填：**
+- **解决结果：** 完成
+- **影响范围：** 填写受影响的端/页面（如 `PC 端榜单编辑页面`）
+
+**进展备注模板：**
+```
+已修复 [问题描述]。
 
 问题原因：[简要说明]
 修复方案：[简要说明]
 修改文件：[文件路径]
 
-Review + 编译验证通过，请确认是否提交代码。
+代码已提交并推送到 [branch] 分支。
 ```
-
-**第二次确认（已 commit，询问 push）**:
-
-```
-代码已 commit (分支：[branch-name])
-确认 push 到远端吗？
-```
-
